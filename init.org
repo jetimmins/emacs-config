@@ -1,0 +1,179 @@
+#+title: GNU Emacs configuration
+#+author: Jay Eden Timmins
+#+email: jaytimmins@gmail.com
+#+options: 'toc:nil author:t email:t
+#+startup: content indent
+#+macro: latest-export-date (eval (format-time-string "%F %T %z"))
+#+macro: word count (eval (count-words (point-min) (point-max)))
+#+property: header-args :tangle "init.el"
+
+*Last revised on {{{latest-export-date}}} with a word count of {{{word-count}}}.*
+
+* Configure use-package
+
+#+begin_src emacs-lisp
+  ;; Initialize package sources
+  (require 'package)
+
+  (setq package-archives '(("melpa" . "https://melpa.org/packages/")
+                           ("org"   . "https://orgmode.org/elpa/")
+                           ("elpa"  . "https://elpa.gnu.org/packages/")))
+
+  (package-initialize)
+  (unless package-archive-contents
+    (package-refresh-contents))
+
+  (unless (package-installed-p 'use-package)
+    (package-install 'use-package))
+
+  (unless (package-installed-p 'use-package)
+    (package-refresh-contents)
+    (package-install 'use-package))
+  (eval-and-compile
+    (setq use-package-always-ensure t
+          use-package-expand-minimally t))
+#+end_src
+
+* Sensible defaults
+Settings which form the basis of any of my configurations.
+
+** UI
+#+begin_src emacs-lisp
+  (setq inhibit-startup-message t)
+  (scroll-bar-mode -1)          ; Disable visible scrollbar
+  (tool-bar-mode -1)            ; Disable the toolbar
+  (tooltip-mode -1)             ; Disable tooltips
+  (set-fringe-mode 10)          ; Add some fringe margin
+  (menu-bar-mode -1)            ; Disable menu bar
+  (setq visible-bell t)         ; Flash instead of unpleasant ding
+#+end_src
+
+** Input
+#+begin_src emacs-lisp
+  (repeat-mode)                 ; Full chord not required for repetitive inputs
+  ;; Configure minibuffer: no cursor, recursive
+(use-package emacs
+  :init
+  (setq minibuffer-prompt-properties
+        '(read-only t cursor-intangible t face minibuffer-prompt))
+  (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
+  (setq enable-recursive-minibuffers t))
+  #+end_src
+** Configuration file management
+#+begin_src emacs-lisp
+  ;; Keep working directory tidy
+(make-directory "~/.tmp/emacs/auto-save/" t)
+(setq auto-save-file-name-transforms '((".*" "~/.tmp/emacs/auto-save/" t)))
+(setq backup-directory-alist '(("." . "~/.tmp/emacs/backup/")))
+(setq backup-by-copying t)
+(setq create-lockfiles nil)
+
+;; Write customizations to a separate file
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(load custom-file t)
+#+end_src
+
+* Theme, modebar, icons
+#+begin_src emacs-lisp
+  (use-package all-the-icons
+  :if (display-graphic-p)
+  :commands all-the-icons-install-fonts
+  :init
+  (unless (find-font (font-spec :name "all-the-icons"))
+    (all-the-icons-install-fonts t)))
+
+(use-package doom-modeline
+  :init (doom-modeline-mode 1))
+
+(use-package doom-themes
+  :config
+  (load-theme 'doom-gruvbox t))
+#+end_src
+
+* QoL external packages
+#+begin_src emacs-lisp
+(use-package which-key
+  :init (which-key-mode)
+  :config
+  (setq which-key-idle-delay 0.3))
+
+(use-package helpful
+  :bind
+  ([remap describe-function] . helpful-function)
+  ([remap describe-command] . helpful-command)
+  ([remap describe-variable] . helpful-variable)
+  ([remap describe-key] . helpful-key))
+#+end_src
+
+* Org-mode config
+#+begin_src emacs-lisp
+;; Hook to configure org-mode for any new buffer
+(defun jet/org-mode-setup ()
+  (org-indent-mode)
+  (variable-pitch-mode 1)
+  (visual-line-mode 1))
+
+;; TODO: use :custom instead of setq
+(use-package org
+  :hook (org-mode . jet/org-mode-setup)
+  :config
+  (setq org-agenda-start-with-log-mode t)
+  (setq org-log-done 'time)
+  (setq org-log-into-drawer t)
+  (setq org-agenda-window-setup 'current-window)
+  (setq org-ellipsis " ▼")
+  (setq org-agenda-files
+	'("~/orgfiles/tasks.org"
+  	  "~/orgfiles/birthdays.org"))
+  (setq org-todo-keywords
+	'((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!)")
+	  (sequence "BACKLOG(b)" "PLAN(p)" "READY(r)" "ACTIVE(a)" "REVIEW(v)" "WAIT(w@/!)" "HOLD(h)" "|" "COMPLETED(c)" "CANC(k@)")))
+  (setq org-hide-emphasis-markers t))
+#+end_src
+
+* Incremental completion and selection narrowing
+#+begin_src emacs-lisp
+(use-package vertico
+  :init (vertico-mode))
+
+(use-package orderless
+  :init
+  (setq completion-styles '(orderless flex)
+      completion-category-defaults nil
+      completion-category-overrides '((file (styles partial-completion)))))
+
+(use-package marginalia
+  :bind (:map minibuffer-local-map
+         ("M-A" . marginalia-cycle))
+  :init (marginalia-mode))
+
+(use-package consult
+  :bind
+  ("M-s g" . consult-grep)
+  ("M-s G" . consult-git-grep)
+  ([remap isearch-forward] . consult-line)
+  ([remap switch-to-buffer] . consult-buffer)
+  :hook (completion-list-mode . consult-preview-at-point-mode)
+  :config (setq consult-narrow-key "<"))
+
+(use-package corfu
+  :custom
+  (corfu-cycle t)
+  (corfu-auto t)
+  (corfu-auto-prefix 2)
+  (corfu-auto-delay 0.0)
+  :bind
+  (:map corfu-map ("M-SPC" . corfu-insert-separator))
+  :init
+  (global-corfu-mode)
+  (corfu-history-mode))
+
+(use-package projectile
+  :config (projectile-mode)
+  :bind-keymap
+  ("C-c p" . projectile-command-map)
+  :init
+  (when (file-directory-p "~/code")
+    (setq projectile-project-search-path '("~/code")))
+  (setq projectile-switch-project-action #'projectile-dired))
+#+end_src
