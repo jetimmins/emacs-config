@@ -9,6 +9,12 @@
 
 *Last revised on {{{latest-export-date}}} with a word count of {{{word-count}}}.*
 
+Todos:
+- Add my additional development tooling configuration
+- Make this more portable (certain config doesn't play nicely on MacOS right now, e.g. visual-bell-mode)
+- Clean up some of the `setq` with idiomatic use-package usage instead
+- Bring in more keybinds and use `commander`
+
 * Configure use-package
 
 #+begin_src emacs-lisp
@@ -122,9 +128,7 @@ Settings which form the basis of any of my configurations.
   (setq org-log-into-drawer t)
   (setq org-agenda-window-setup 'current-window)
   (setq org-ellipsis " ▼")
-  (setq org-agenda-files
-	'("~/orgfiles/tasks.org"
-  	  "~/orgfiles/birthdays.org"))
+  (setq org-agenda-files '("~/orgfiles"))
   (setq org-todo-keywords
 	'((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!)")
 	  (sequence "BACKLOG(b)" "PLAN(p)" "READY(r)" "ACTIVE(a)" "REVIEW(v)" "WAIT(w@/!)" "HOLD(h)" "|" "COMPLETED(c)" "CANC(k@)")))
@@ -133,42 +137,47 @@ Settings which form the basis of any of my configurations.
 
 * Incremental completion and selection narrowing
 #+begin_src emacs-lisp
-(use-package vertico
-  :init (vertico-mode))
+  (use-package vertico
+    :init (vertico-mode))
 
-(use-package orderless
-  :init
-  (setq completion-styles '(orderless flex)
-      completion-category-defaults nil
-      completion-category-overrides '((file (styles partial-completion)))))
+  (use-package orderless
+    :init
+    (setq completion-styles '(orderless flex)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles partial-completion)))))
 
-(use-package marginalia
-  :bind (:map minibuffer-local-map
-         ("M-A" . marginalia-cycle))
-  :init (marginalia-mode))
+  (use-package marginalia
+    :bind (:map minibuffer-local-map
+           ("M-A" . marginalia-cycle))
+    :init (marginalia-mode))
 
-(use-package consult
-  :bind
-  ("M-s g" . consult-grep)
-  ("M-s G" . consult-git-grep)
-  ([remap isearch-forward] . consult-line)
-  ([remap switch-to-buffer] . consult-buffer)
-  :hook (completion-list-mode . consult-preview-at-point-mode)
-  :config (setq consult-narrow-key "<"))
-
-(use-package corfu
-  :custom
-  (corfu-cycle t)
-  (corfu-auto t)
-  (corfu-auto-prefix 2)
-  (corfu-auto-delay 0.0)
-  :bind
-  (:map corfu-map ("M-SPC" . corfu-insert-separator))
-  :init
-  (global-corfu-mode)
-  (corfu-history-mode))
-
-(use-package projectile
+  (use-package consult
+    :bind
+    ("M-s g" . consult-grep)
+    ("M-s G" . consult-git-grep)
+    ("C-c r" . replace-string)
+    ("C-c M-r" . replace-regexp)
+    ([remap isearch-forward] . consult-line)
+    ([remap switch-to-buffer] . consult-buffer)
+    :hook (completion-list-mode . consult-preview-at-point-mode)
+    :config (setq consult-narrow-key "<")
+  )
+  (use-package corfu
+    :custom
+    (corfu-cycle t)
+    (corfu-auto t)
+    (corfu-auto-prefix 2)
+    (corfu-auto-delay 0.0)
+    :bind
+    (:map corfu-map ("M-SPC" . corfu-insert-separator))
+    :init
+    (global-corfu-mode)
+    (corfu-history-mode))
+#+end_src
+* Development
+** Development tooling
+#+begin_src emacs-lisp
+  (use-package projectile
   :config (projectile-mode)
   :bind-keymap
   ("C-c p" . projectile-command-map)
@@ -176,4 +185,84 @@ Settings which form the basis of any of my configurations.
   (when (file-directory-p "~/code")
     (setq projectile-project-search-path '("~/code")))
   (setq projectile-switch-project-action #'projectile-dired))
+
+  (use-package magit)
+
+  (use-package savehist
+    :ensure nil
+    :init (savehist-mode 1)
+    :config
+    (setq savehist-additional-variables '(kill-ring search-ring regexp-search-ring))
+    (setq savehist-file "~/.tmp/emacs/savehist"))
+#+end_src
+** LSP & Grammars
+#+begin_src emacs-lisp
+  (use-package lsp-mode
+    :init
+    (setq lsp-completion-provider :none)
+    (defun my/lsp-mode-setup-completion () ;; Play nicely with orderless
+      (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+          '(flex)))
+    :bind
+    ("C-c l f" . lsp-format-buffer)
+    :hook
+    (c-ts-mode . lsp)
+    (c++-ts-mode . lsp)
+    (clojure-ts-mode . lsp)
+    (python-ts-mode . lsp)
+    (json-ts-mode . lsp)
+    (ruby-ts-mode . lsp)
+    (lsp-completion . my/lsp-mode-setup-completion)
+    (lsp-mode . lsp-enable-which-key-integration)  ;; could be trouble (with-eval-after-load)
+    :config
+    ;; Performance
+    (setq lsp-log-io nil
+          lsp-restart 'auto-restart
+          lsp-enable-symbol-highlighting nil
+          lsp-enable-on-type-formatting nil
+          lsp-signature-auto-activate nil
+          lsp-signature-render-documentation nil
+          lsp-eldoc-hook nil
+          lsp-modeline-code-actions-enable nil
+          lsp-modeline-diagnostics-enable nil
+          lsp-headerline-breadcrumb-enable nil
+          lsp-semantic-tokens-enable nil
+          lsp-enable-folding nil
+          lsp-enable-imenu nil
+          lsp-enable-snippet nil
+          lsp-idle-delay 0.1
+          read-process-output-max (* 1024 1024)
+          gc-cons-threshold (* 100 1024)))
+
+      ;; Treesitter grammars -- install with M-x treesit-install-language-grammar
+    (setq treesit-language-source-alist
+          '((bash "https://github.com/tree-sitter/tree-sitter-bash")
+            (c "https://github.com/tree-sitter/tree-sitter-c")
+            (clojure "https://github.com/oakmac/tree-sitter-clojure")
+            (cpp "https://github.com/tree-sitter/tree-sitter-cpp")
+            (css "https://github.com/tree-sitter/tree-sitter-css")
+            (elisp "https://github.com/Wilfred/tree-sitter-elisp")
+            (go "https://github.com/tree-sitter/tree-sitter-go")
+            (html "https://github.com/tree-sitter/tree-sitter-html")
+            (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src")
+            (json "https://github.com/tree-sitter/tree-sitter-json")
+            (make "https://github.com/alemuller/tree-sitter-make")
+            (markdown "https://github.com/ikatyang/tree-sitter-markdown")
+            (python "https://github.com/tree-sitter/tree-sitter-python")
+            (ruby "https://github.com/tree-sitter/tree-sitter-ruby")
+            (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
+            (yaml "https://github.com/ikatyang/tree-sitter-yaml")))
+
+    ;; Enable treesit major modes by default
+    (add-to-list 'major-mode-remap-alist '(c-mode . c-ts-mode))
+    (add-to-list 'major-mode-remap-alist '(c++-mode . c++-ts-mode))
+    (add-to-list 'major-mode-remap-alist
+                 '(c-or-c++-mode . c-or-c++-ts-mode))
+    (add-to-list 'major-mode-remap-alist '(clojure-mode . clojure-ts-mode))
+    (add-to-list 'major-mode-remap-alist '(json-mode . json-ts-mode))
+    (add-to-list 'major-mode-remap-alist '(python-mode . python-ts-mode))
+    (add-to-list 'major-mode-remap-alist '(ruby-mode . ruby-ts-mode))
+#+end_src
+** Language specific tools
+#+begin_src emacs-lisp
 #+end_src
