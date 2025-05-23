@@ -55,6 +55,7 @@ Settings which form the basis of any of my configurations.
 #+end_src
 
 ** Input
+
 #+begin_src emacs-lisp
   (repeat-mode)                 ; Full chord not required for repetitive inputs
   ;; Configure minibuffer: no cursor, recursive
@@ -65,6 +66,25 @@ Settings which form the basis of any of my configurations.
   (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
   (setq enable-recursive-minibuffers t))
   #+end_src
+** Text formatting
+#+begin_src emacs-lisp
+    (setq-default buffer-file-coding-system 'utf-8-unix)
+
+  ;;Standardize line endings for all programming language modes
+  (add-hook 'prog-mode-hook
+            (lambda ()
+              ;; Set buffer's line ending system
+              (set-buffer-file-coding-system 'utf-8-unix)
+            
+              ;; Convert existing CRLF to LF
+              (when (and (buffer-file-name)
+                        (not buffer-read-only))
+                (save-excursion
+                  (goto-char (point-min))
+                  (while (search-forward "\r\n" nil t)
+                    (replace-match "\n" nil t))))))
+
+#+end_src
 ** Configuration file management
 #+begin_src emacs-lisp
   ;; Keep working directory tidy
@@ -194,6 +214,10 @@ Settings which form the basis of any of my configurations.
     :config
     (setq savehist-additional-variables '(kill-ring search-ring regexp-search-ring))
     (setq savehist-file "~/.tmp/emacs/savehist"))
+
+  (use-package flycheck
+    :init (global-flycheck-mode)
+    :hook (ruby-ts-mode . flycheck-mode))
 #+end_src
 ** LSP & Grammars
 #+begin_src emacs-lisp
@@ -211,7 +235,6 @@ Settings which form the basis of any of my configurations.
     (clojure-ts-mode . lsp)
     (python-ts-mode . lsp)
     (json-ts-mode . lsp)
-    (ruby-ts-mode . lsp)
     (lsp-completion . my/lsp-mode-setup-completion)
     (lsp-mode . lsp-enable-which-key-integration)  ;; could be trouble (with-eval-after-load)
     :config
@@ -233,7 +256,7 @@ Settings which form the basis of any of my configurations.
           lsp-idle-delay 0.1
           read-process-output-max (* 1024 1024)
           gc-cons-threshold (* 100 1024)))
-
+  
       ;; Treesitter grammars -- install with M-x treesit-install-language-grammar
     (setq treesit-language-source-alist
           '((bash "https://github.com/tree-sitter/tree-sitter-bash")
@@ -265,4 +288,25 @@ Settings which form the basis of any of my configurations.
 #+end_src
 ** Language specific tools
 #+begin_src emacs-lisp
+  ;; Ruby (lsp implementation are poor compared to robe)
+  (use-package rubocop
+    :hook (ruby-ts-mode . rubocop-mode)
+    :bind (:map ruby-ts-mode-map
+                ("C-c l f" . rubocop-format-current-file)))
+
+  (use-package inf-ruby
+    :hook (ruby-ts-mode . inf-ruby-minor-mode))
+
+  (use-package robe
+    :init
+    (defun my/robe-setup-completion()
+      (add-to-list 'completion-at-point-functions 'robe-complete-at-point))
+    :hook
+    (ruby-ts-mode . robe-mode)
+    (ruby-ts-mode . robe-start)
+    (robe-mode . my/robe-setup-completion))
+#+end_src
+* Debug
+#+begin_src emacs-lisp
+  (setq lsp-print-io t)
 #+end_src
