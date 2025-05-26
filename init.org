@@ -16,14 +16,21 @@ Todos:
 - Bring in more keybinds and use `commander`
 
 * Configure use-package
-
+Basic configuration of use-package. I've elected not to use anything like elpaca/straight.el as I don't regularly need to pull directly for git repos and I'm not concerned about version pinning for reproducible builds right now.
 #+begin_src emacs-lisp
   ;; Initialize package sources
   (require 'package)
 
-  (setq package-archives '(("melpa" . "https://melpa.org/packages/")
+  (setq package-archives '(("melpa-stable" . "https://stable.melpa.org/packages/")
+                           ("melpa" . "https://melpa.org/packages/")
                            ("org"   . "https://orgmode.org/elpa/")
                            ("elpa"  . "https://elpa.gnu.org/packages/")))
+
+  ;; Prefer stable / gnu archives
+  (setq package-archive-priorities
+        '(("melpa-stable" . 10)
+          ("elpa" . 5)
+          ("melpa" . 1))
 
   (package-initialize)
   (unless package-archive-contents
@@ -194,6 +201,14 @@ Settings which form the basis of any of my configurations.
     (corfu-history-mode))
 #+end_src
 * Development
+** UI
+Open compilation related buffers at 20% height at the bottom.
+#+begin_src emacs-lisp
+  (add-to-list 'display-buffer-alist
+               '("\\*compilation\\*"
+                 (display-buffer-at-bottom)
+                 (window-height . 0.2)))
+#+end_src
 ** Development tooling
 #+begin_src emacs-lisp
   (use-package projectile
