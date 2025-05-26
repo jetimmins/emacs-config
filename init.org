@@ -30,7 +30,7 @@ Basic configuration of use-package. I've elected not to use anything like elpaca
   (setq package-archive-priorities
         '(("melpa-stable" . 10)
           ("elpa" . 5)
-          ("melpa" . 1))
+          ("melpa" . 1)))
 
   (package-initialize)
   (unless package-archive-contents
@@ -161,44 +161,51 @@ Settings which form the basis of any of my configurations.
   (setq org-hide-emphasis-markers t))
 #+end_src
 
-* Incremental completion and selection narrowing
+* Incremental completion, selection narrowing & snippets
 #+begin_src emacs-lisp
-  (use-package vertico
-    :init (vertico-mode))
+    (use-package vertico
+      :init (vertico-mode))
 
-  (use-package orderless
-    :init
-    (setq completion-styles '(orderless flex)
-        completion-category-defaults nil
-        completion-category-overrides '((file (styles partial-completion)))))
+    (use-package orderless
+      :init
+      (setq completion-styles '(orderless flex)
+          completion-category-defaults nil
+          completion-category-overrides '((file (styles partial-completion)))))
 
-  (use-package marginalia
-    :bind (:map minibuffer-local-map
-           ("M-A" . marginalia-cycle))
-    :init (marginalia-mode))
+    (use-package marginalia
+      :bind (:map minibuffer-local-map
+             ("M-A" . marginalia-cycle))
+      :init (marginalia-mode))
 
-  (use-package consult
-    :bind
-    ("M-s g" . consult-grep)
-    ("M-s G" . consult-git-grep)
-    ("C-c r" . replace-string)
-    ("C-c M-r" . replace-regexp)
-    ([remap isearch-forward] . consult-line)
-    ([remap switch-to-buffer] . consult-buffer)
-    :hook (completion-list-mode . consult-preview-at-point-mode)
-    :config (setq consult-narrow-key "<")
-  )
-  (use-package corfu
-    :custom
-    (corfu-cycle t)
-    (corfu-auto t)
-    (corfu-auto-prefix 2)
-    (corfu-auto-delay 0.0)
-    :bind
-    (:map corfu-map ("M-SPC" . corfu-insert-separator))
-    :init
-    (global-corfu-mode)
-    (corfu-history-mode))
+    (use-package consult
+      :bind
+      ("M-s g" . consult-grep)
+      ("M-s G" . consult-git-grep)
+      ("C-c r" . replace-string)
+      ("C-c M-r" . replace-regexp)
+      ([remap isearch-forward] . consult-line)
+      ([remap switch-to-buffer] . consult-buffer)
+      :hook (completion-list-mode . consult-preview-at-point-mode)
+      :config (setq consult-narrow-key "<"))
+
+    (use-package corfu
+      :custom
+      (corfu-cycle t)
+      (corfu-auto t)
+      (corfu-auto-prefix 2)
+      (corfu-auto-delay 0.0)
+      :bind
+      (:map corfu-map ("M-SPC" . corfu-insert-separator))
+      :init
+      (global-corfu-mode)
+      (corfu-history-mode))
+
+  (use-package yasnippet
+    :config (yas-global-mode 1))
+
+  (use-package yasnippet-snippets
+    :after yasnippet)
+  
 #+end_src
 * Development
 ** UI
