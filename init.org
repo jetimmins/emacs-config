@@ -71,6 +71,22 @@ Settings which form the basis of any of my configurations.
           '(read-only t cursor-intangible t face minibuffer-prompt))
     (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
     (setq enable-recursive-minibuffers t))
+
+  ;; Ensure C-g closes the minibuffer when it's open.
+  (defun my/keyboard-quit-dwim ()
+    (interactive)
+    (cond
+     ((region-active-p)
+      (keyboard-quit))
+     ((derived-mode-p 'completion-list-mode)
+      (delete-completion-window))
+     ((> (minibuffer-depth) 0)
+      (abort-recursive-edit))
+     (t
+      (keyboard-quit))))
+
+  (define-key global-map (kbd "C-g") #'my/keyboard-quit-dwim)
+
   #+end_src
 ** Text formatting
 #+begin_src emacs-lisp
